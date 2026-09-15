@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a43">
+  <title>Exploring Space AAC Board</title>
+  <meta name="description" content="An interactive, unit-specific AAC communication board for Readtopia Unit 1: Exploring Space.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23102a43'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%23f6c453'/%3E%3Cellipse cx='32' cy='32' rx='24' ry='10' fill='none' stroke='%235ad1c8' stroke-width='4' transform='rotate(-18 32 32)'/%3E%3Ccircle cx='52' cy='22' r='4' fill='%23ffffff'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --ink: #102a43;
+      --space: #071724;
+      --content: #dceefe;
+      --content-border: #3a78a8;
+      --concept: #fff0c9;
+      --concept-border: #b98516;
+      --action: #dcf4df;
+      --action-border: #438c51;
+      --social: #f8dcf0;
+      --social-border: #a14883;
+      --yes: #b9e7c4;
+      --no: #f4bfc1;
+      --card-radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--space); }
+
+    body {
+      margin: 0;
+      min-width: 860px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 8%, rgba(93, 209, 200, .16), transparent 22rem),
+        radial-gradient(circle at 92% 3%, rgba(246, 196, 83, .13), transparent 24rem),
+        var(--space);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .app {
+      width: min(1500px, 100%);
+      margin: 0 auto;
+      padding: 14px 18px 22px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      color: white;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.45rem, 2.5vw, 2.35rem);
+      letter-spacing: .02em;
+    }
+
+    .subtitle {
+      margin: 2px 0 0;
+      color: #bed1df;
+      font-size: .95rem;
+    }
+
+    .header-actions { display: flex; gap: 8px; }
+
+    .fullscreen,
+    .print-link {
+      border: 2px solid rgba(255,255,255,.62);
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,.08);
+      color: white;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .print-link { background: #27678f; }
+
+    .message-bar {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    #message {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 9px 16px;
+      overflow: hidden;
+      border: 3px solid #91a8b9;
+      border-radius: 14px;
+      background: white;
+      font-size: 1.4rem;
+      font-weight: 700;
+      box-shadow: 0 7px 18px rgba(0,0,0,.2);
+    }
+
+    #message:empty::before {
+      content: "Tap words to build a message";
+      color: #667785;
+      font-weight: 500;
+    }
+
+    .message-action {
+      min-width: 74px;
+      border: 0;
+      border-radius: 13px;
+      padding: 8px 13px;
+      color: white;
+      background: #27678f;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .message-action.clear { background: #963c48; }
+    .message-action.undo { background: #775d29; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .cell {
+      position: relative;
+      min-height: 132px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      align-items: stretch;
+      padding: 0;
+      overflow: hidden;
+      border: 3px solid var(--content-border);
+      border-radius: var(--card-radius);
+      color: #102a43;
+      background: var(--content);
+      box-shadow: 0 4px 0 rgba(0,0,0,.28);
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .cell.concept { background: var(--concept); border-color: var(--concept-border); }
+    .cell.action { background: var(--action); border-color: var(--action-border); }
+    .cell.social { background: var(--social); border-color: var(--social-border); }
+    .cell.yes { background: var(--yes); border-color: #287943; }
+    .cell.no { background: var(--no); border-color: #9d3440; }
+
+    .cell:focus-visible {
+      outline: 5px solid #f6c453;
+      outline-offset: 2px;
+      z-index: 2;
+    }
+
+    .cell:active,
+    .cell.pressed {
+      transform: translateY(3px) scale(.985);
+      box-shadow: 0 1px 0 rgba(0,0,0,.25);
+      filter: saturate(1.15);
+    }
+
+    .label {
+      z-index: 2;
+      min-height: 35px;
+      display: grid;
+      place-items: center;
+      padding: 5px 5px 3px;
+      border-bottom: 2px solid rgba(16,42,67,.22);
+      background: rgba(255,255,255,.78);
+      font-size: clamp(.87rem, 1.15vw, 1.08rem);
+      font-weight: 800;
+      line-height: 1.05;
+      text-align: center;
+    }
+
+    .symbol {
+      min-height: 88px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      padding: 4px;
+      font-size: clamp(2.75rem, 4.1vw, 4.7rem);
+      line-height: 1;
+    }
+
+    .symbol img {
+      width: 100%;
+      height: 84px;
+      display: block;
+      object-fit: contain;
+      mix-blend-mode: multiply;
+    }
+
+    .source-symbol img { height: 90px; }
+
+    .chapter {
+      position: absolute;
+      right: 5px;
+      bottom: 3px;
+      z-index: 3;
+      padding: 2px 4px;
+      border-radius: 5px;
+      color: #264356;
+      background: rgba(255,255,255,.84);
+      font-size: .62rem;
+      font-weight: 800;
+    }
+
+    .sheet-symbol {
+      position: relative;
+      container-type: inline-size;
+      min-height: 88px;
+      overflow: hidden;
+      background: rgba(255,255,255,.55);
+    }
+
+    .sheet-symbol img {
+      position: absolute;
+      width: 697cqw;
+      max-width: none;
+      height: auto;
+      mix-blend-mode: multiply;
+    }
+
+    /* Readtopia card artwork positions: 2 columns x 3 rows on a letter page. */
+    .c1r1 img { left: -62cqw; top: -195cqw; }
+    .c2r1 img { left: -369cqw; top: -195cqw; }
+    .c1r2 img { left: -62cqw; top: -430cqw; }
+    .c2r2 img { left: -369cqw; top: -430cqw; }
+    .c1r3 img { left: -62cqw; top: -665cqw; }
+    .c2r3 img { left: -369cqw; top: -665cqw; }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 11px;
+      color: #dce7ee;
+      font-size: .8rem;
+      font-weight: 700;
+    }
+
+    .key::before {
+      content: "";
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 6px;
+      border-radius: 3px;
+      vertical-align: -1px;
+      background: var(--key);
+    }
+
+    @media (max-width: 1050px) {
+      .app { padding-inline: 10px; }
+      .cell { min-height: 120px; }
+      .symbol, .sheet-symbol { min-height: 78px; }
+      .symbol img { height: 75px; }
+    }
+
+    @media print {
+      @page { size: letter landscape; margin: .22in; }
+      html, body { width: 11in; height: 8.5in; background: white; }
+      body { min-width: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .app { width: 10.56in; margin: 0; padding: 0; }
+      header { justify-content: center; margin: 0 0 .06in; color: var(--ink); }
+      h1 { font-size: 19pt; }
+      .subtitle, .header-actions, .message-bar, .legend { display: none !important; }
+      .board { gap: .045in; }
+      .cell { min-height: 1.22in; border-width: 2px; border-radius: 8px; box-shadow: none; break-inside: avoid; }
+      .label { min-height: .28in; padding: 2px 3px; font-size: 9pt; border-bottom-width: 1px; }
+      .symbol, .sheet-symbol { min-height: .86in; font-size: 34pt; padding: 1px; }
+      .symbol img { height: .82in; }
+      .source-symbol img { height: .82in; }
+      .chapter { right: 3px; bottom: 2px; font-size: 5.5pt; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>Exploring Space Communication Board</h1>
+        <p class="subtitle">Readtopia Unit 1 · Neil deGrasse Tyson: Stargazer</p>
+      </div>
+      <div class="header-actions">
+        <a class="print-link" href="exploring-space-aac-board.pdf" download>Printable PDF</a>
+        <button class="fullscreen" type="button" id="fullscreen">Full screen</button>
+      </div>
+    </header>
+
+    <section class="message-bar" aria-label="Message controls">
+      <div id="message" role="status" aria-live="polite"></div>
+      <button class="message-action" type="button" id="speak">Speak</button>
+      <button class="message-action undo" type="button" id="undo">Undo</button>
+      <button class="message-action clear" type="button" id="clear">Clear</button>
+    </section>
+
+    <section class="board" aria-label="Exploring Space communication words">
+      <button class="cell" data-say="star"><span class="label">star</span><span class="symbol">⭐</span><span class="chapter">Ch. 1</span></button>
+      <button class="cell" data-say="sun"><span class="label">sun</span><span class="symbol">☀️</span><span class="chapter">Ch. 6</span></button>
+      <button class="cell" data-say="moon"><span class="label">moon</span><span class="symbol">🌙</span><span class="chapter">Ch. 6</span></button>
+      <button class="cell" data-say="Earth"><span class="label">Earth</span><span class="symbol">🌎</span><span class="chapter">Ch. 6</span></button>
+      <button class="cell" data-say="planet"><span class="label">planet</span><span class="sheet-symbol c1r1"><img src="assets/readtopia-page-07.png" alt="planet illustration"></span><span class="chapter">Ch. 10</span></button>
+      <button class="cell" data-say="solar system"><span class="label">solar system</span><span class="sheet-symbol c2r3"><img src="assets/readtopia-page-06.png" alt="solar system illustration"></span><span class="chapter">Ch. 3</span></button>
+      <button class="cell action" data-say="repeat that"><span class="label">repeat that</span><span class="symbol source-symbol"><img src="assets/repeat.png" alt="repeat"></span></button>
+
+      <button class="cell" data-say="galaxy"><span class="label">galaxy</span><span class="sheet-symbol c2r1"><img src="assets/readtopia-page-07.png" alt="galaxy illustration"></span><span class="chapter">Ch. 1</span></button>
+      <button class="cell" data-say="nebula"><span class="label">nebula</span><span class="sheet-symbol c1r2"><img src="assets/readtopia-page-07.png" alt="nebula illustration"></span><span class="chapter">Ch. 1</span></button>
+      <button class="cell" data-say="asteroid"><span class="label">asteroid</span><span class="sheet-symbol c1r2"><img src="assets/readtopia-page-08.png" alt="asteroid illustration"></span><span class="chapter">Ch. 9</span></button>
+      <button class="cell" data-say="black hole"><span class="label">black hole</span><span class="sheet-symbol c1r1"><img src="assets/readtopia-page-08.png" alt="black hole illustration"></span><span class="chapter">Ch. 10</span></button>
+      <button class="cell" data-say="Neptune"><span class="label">Neptune</span><span class="symbol">🔵</span><span class="chapter">Ch. 10</span></button>
+      <button class="cell" data-say="telescope"><span class="label">telescope</span><span class="sheet-symbol c1r1"><img src="assets/readtopia-page-06.png" alt="telescope illustration"></span><span class="chapter">Ch. 1</span></button>
+      <button class="cell social" data-say="I like that"><span class="label">I like that</span><span class="symbol source-symbol"><img src="assets/i-like.png" alt="I like"></span></button>
+
+      <button class="cell" data-say="Hubble Telescope"><span class="label">Hubble Telescope</span><span class="symbol">🔭</span><span class="chapter">Ch. 4</span></button>
+      <button class="cell" data-say="Webb Telescope"><span class="label">Webb Telescope</span><span class="symbol">🔭</span><span class="chapter">Ch. 5</span></button>
+      <button class="cell" data-say="planetarium"><span class="label">planetarium</span><span class="sheet-symbol c1r2"><img src="assets/readtopia-page-06.png" alt="planetarium illustration"></span><span class="chapter">Ch. 1</span></button>
+      <button class="cell" data-say="dome"><span class="label">dome</span><span class="sheet-symbol c2r2"><img src="assets/readtopia-page-06.png" alt="dome illustration"></span><span class="chapter">Ch. 1</span></button>
+      <button class="cell concept" data-say="supernova"><span class="label">supernova</span><span class="sheet-symbol c2r3"><img src="assets/readtopia-page-07.png" alt="supernova illustration"></span><span class="chapter">Ch. 3</span></button>
+      <button class="cell concept" data-say="solar eclipse"><span class="label">solar eclipse</span><span class="sheet-symbol c1r1"><img src="assets/readtopia-page-09.png" alt="solar eclipse illustration"></span><span class="chapter">Ch. 6</span></button>
+      <button class="cell social" data-say="I don't like that"><span class="label">I don't like that</span><span class="symbol source-symbol"><img src="assets/dont-like.png" alt="I don't like"></span></button>
+
+      <button class="cell concept" data-say="life cycle of a star"><span class="label">life cycle of a star</span><span class="sheet-symbol c2r2"><img src="assets/readtopia-page-07.png" alt="star life cycle illustration"></span><span class="chapter">Ch. 2</span></button>
+      <button class="cell concept" data-say="orbit"><span class="label">orbit</span><span class="symbol">🪐</span><span class="chapter">Ch. 6</span></button>
+      <button class="cell concept" data-say="gravity"><span class="label">gravity</span><span class="symbol">🍎</span><span class="chapter">Ch. 5</span></button>
+      <button class="cell action" data-say="astronomer"><span class="label">astronomer</span><span class="sheet-symbol c2r1"><img src="assets/readtopia-page-06.png" alt="astronomer illustration"></span><span class="chapter">Ch. 1</span></button>
+      <button class="cell action" data-say="theory"><span class="label">theory</span><span class="sheet-symbol c2r1"><img src="assets/readtopia-page-09.png" alt="theory illustration"></span><span class="chapter">Ch. 5</span></button>
+      <button class="cell action" data-say="evidence"><span class="label">evidence</span><span class="symbol">🔎</span><span class="chapter">Ch. 3</span></button>
+      <button class="cell social" data-say="I agree"><span class="label">I agree</span><span class="symbol source-symbol"><img src="assets/i-agree.png" alt="I agree"></span></button>
+
+      <button class="cell action" data-say="discover"><span class="label">discover</span><span class="symbol">💡</span><span class="chapter">Ch. 1</span></button>
+      <button class="cell action" data-say="predict"><span class="label">predict</span><span class="symbol">🧠</span><span class="chapter">Ch. 1</span></button>
+      <button class="cell concept" data-say="bar chart"><span class="label">bar chart</span><span class="symbol">📊</span><span class="chapter">Ch. 10</span></button>
+      <button class="cell concept" data-say="distance"><span class="label">distance</span><span class="symbol">↔️</span><span class="chapter">Ch. 10</span></button>
+      <button class="cell" data-say="gas"><span class="label">gas</span><span class="symbol">☁️</span><span class="chapter">Ch. 1</span></button>
+      <button class="cell" data-say="dust"><span class="label">dust</span><span class="symbol">✨</span><span class="chapter">Ch. 1</span></button>
+      <button class="cell social" data-say="I don't agree"><span class="label">I don't agree</span><span class="symbol source-symbol"><img src="assets/dont-agree.png" alt="I don't agree"></span></button>
+
+      <button class="cell" data-say="constellation"><span class="label">constellation</span><span class="symbol">🌌</span><span class="chapter">Ch. 1</span></button>
+      <button class="cell social" data-say="I understand"><span class="label">I understand</span><span class="symbol source-symbol"><img src="assets/understand.png" alt="I understand"></span></button>
+      <button class="cell social" data-say="I don't understand"><span class="label">I don't understand</span><span class="symbol source-symbol"><img src="assets/dont-understand.png" alt="I don't understand"></span></button>
+      <button class="cell social" data-say="I don't know"><span class="label">I don't know</span><span class="symbol source-symbol"><img src="assets/dont-know.png" alt="I don't know"></span></button>
+      <button class="cell social" data-say="I need a break"><span class="label">I need a break</span><span class="symbol source-symbol"><img src="assets/break.png" alt="I need a break"></span></button>
+      <button class="cell yes" data-say="yes"><span class="label">YES</span><span class="symbol source-symbol"><img src="assets/yes.png" alt="yes"></span></button>
+      <button class="cell no" data-say="no"><span class="label">NO</span><span class="symbol source-symbol"><img src="assets/no.png" alt="no"></span></button>
+    </section>
+
+    <div class="legend" aria-hidden="true">
+      <span class="key" style="--key: var(--content)">space words</span>
+      <span class="key" style="--key: var(--concept)">ideas and concepts</span>
+      <span class="key" style="--key: var(--action)">actions and learning</span>
+      <span class="key" style="--key: var(--social)">participation and self-advocacy</span>
+    </div>
+  </main>
+
+  <script>
+    const message = [];
+    const messageBox = document.querySelector('#message');
+
+    function updateMessage() {
+      messageBox.textContent = message.join(' ');
+    }
+
+    function speak(text) {
+      if (!('speechSynthesis' in window) || !text) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.88;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    document.querySelectorAll('.cell').forEach((button) => {
+      button.addEventListener('click', () => {
+        const words = button.dataset.say;
+        message.push(words);
+        updateMessage();
+        speak(words);
+        button.classList.add('pressed');
+        setTimeout(() => button.classList.remove('pressed'), 170);
+      });
+    });
+
+    document.querySelector('#speak').addEventListener('click', () => speak(message.join(' ')));
+    document.querySelector('#undo').addEventListener('click', () => { message.pop(); updateMessage(); });
+    document.querySelector('#clear').addEventListener('click', () => { message.length = 0; updateMessage(); window.speechSynthesis?.cancel(); });
+    document.querySelector('#fullscreen').addEventListener('click', async () => {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+      else await document.exitFullscreen?.();
+    });
+  </script>
+</body>
+</html>
